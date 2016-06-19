@@ -1,3 +1,13 @@
+--- a/compiler/ghc.mk
++++ b/compiler/ghc.mk
+@@ -335,6 +335,7 @@ compiler_stage2_CONFIGURE_OPTS += --flags=ncg
+ endif
+ 
+ ifeq "$(GhcWithInterpreter)" "YES"
++compiler_stage1_CONFIGURE_OPTS += --flags=ghci
+ compiler_stage2_CONFIGURE_OPTS += --flags=ghci
+ 
+ ifeq "$(GhcEnableTablesNextToCode) $(GhcUnregisterised)" "YES NO"
 --- a/libraries/base/GHC/Event/EPoll.hsc
 +++ b/libraries/base/GHC/Event/EPoll.hsc
 @@ -167,7 +167,7 @@ newtype EventType = EventType {
@@ -29,6 +39,15 @@
  inputTime termios = unsafePerformIO $ do
 --- a/mk/config.mk.in
 +++ b/mk/config.mk.in
+@@ -197,7 +197,7 @@ GhcWithSMP := $(strip $(if $(filter YESNO, $(ArchSupportsSMP)$(GhcUnregisterised
+ # Whether to include GHCi in the compiler.  Depends on whether the RTS linker
+ # has support for this OS/ARCH combination.
+ 
+-OsSupportsGHCi=$(strip $(patsubst $(TargetOS_CPP), YES, $(findstring $(TargetOS_CPP), mingw32 linux solaris2 freebsd dragonfly netbsd openbsd darwin kfreebsdgnu)))
++OsSupportsGHCi=$(strip $(patsubst $(TargetOS_CPP), YES, $(findstring $(TargetOS_CPP), mingw32 linux linux_android solaris2 freebsd dragonfly netbsd openbsd darwin kfreebsdgnu)))
+ ArchSupportsGHCi=$(strip $(patsubst $(TargetArch_CPP), YES, $(findstring $(TargetArch_CPP), i386 x86_64 powerpc powerpc64 powerpc64le sparc sparc64 arm aarch64)))
+ 
+ ifeq "$(OsSupportsGHCi)$(ArchSupportsGHCi)" "YESYES"
 @@ -248,7 +248,7 @@ ExtraMakefileSanityChecks = NO
  # Options for Libraries
  
