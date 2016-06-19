@@ -4,7 +4,7 @@
 
 # builds non-standard NDK cross-toolchain with host=arm-eabi, target=arm-linux-androideabi
 
-# prerequisites (run from root): pacman -S autoconf gcc make git binutils pkg-config automake patch flex bison zip
+# prerequisites (run from root): pacman -S autoconf gcc make git binutils pkg-config automake patch flex bison zip alex happy ghc
 
 # run the following with normal user
 
@@ -34,14 +34,16 @@ ln -rs $NDK_TOOLCHAIN{,/usr}
 # copy files from android-9
 
 # clone NDK
-git clone https://android.googlesource.com/platform/ndk && cd ndk
+git clone https://android.googlesource.com/platform/ndk
+pushd ndk
 export NDK=$(pwd)
 repo init -u https://android.googlesource.com/platform/manifest -b master-ndk
 
 # build binutils
 repo sync toolchain/binutils
 pushd toolchain/binutils/binutils-*
-./configure --prefix=$NDK_TOOLCHAIN --target=arm-linux-androideabi --with-sysroot=$NDK_TOOLCHAIN --disable-multilib --disable-werror
+patch -p1 -i $MY_SCRIPT_DIR/patches/binutils.patch
+./configure --prefix=$NDK_TOOLCHAIN --target=arm-linux-androideabi --with-sysroot=$NDK_TOOLCHAIN --enable-ld --enable-gold --enable-plugins --disable-multilib --disable-werror
 make -j4
 make install
 popd
@@ -62,10 +64,54 @@ make -j4 all-gcc all-target-libgcc
 make install-gcc install-target-libgcc
 popd
 
-# build libgcc
-mkdir libgcc_place
-pushd libgcc_place
-$NDK/toolchain/gcc/gcc-4.9/configure --prefix=$NDK_TOOLCHAIN --target=arm-linux-androideabi --enable-languages=c,c++ --disable-multilib
-make -j4 all-target-libgcc
-make install-target-libgcc
+popd # ndk
+
+# path for updating automake scripts
+export CONFIG_SUB_SRC=/usr/share/automake-1.15
+
+# install iconv
+git clone https://github.com/ironsteel/iconv-android.git
+pushd iconv-android
+# Update config.sub and config.guess
+cp $CONFIG_SUB_SRC/config.sub build-aux
+cp $CONFIG_SUB_SRC/config.guess build-aux
+cp $CONFIG_SUB_SRC/config.sub libcharset/build-aux
+cp $CONFIG_SUB_SRC/config.guess libcharset/build-aux
+./configure --prefix=$NDK_TOOLCHAIN --host=arm-linux-androideabi --with-sysroot=$NDK_TOOLCHAIN --enable-static --disable-shared
+make -j4
+make install
+popd
+
+# install ncurses
+curl -LO http://ftp.gnu.org/pub/gnu/ncurses/ncurses-5.9.tar.gz
+tar xf ncurses-5.9.tar.gz
+pushd ncurses-5.9
+# ac_cv_header_locale_h=no is to work around error
+ac_cv_header_locale_h=no ./configure --prefix=$NDK_TOOLCHAIN --host=arm-linux-androideabi --with-sysroot=$NDK_TOOLCHAIN --enable-static --disable-shared --without-manpages --includedir=$NDK_TOOLCHAIN/include
+make -j4
+make install
+popd
+
+# now build ghc
+
+# use github
+git config --global url."git://github.com/ghc/packages-".insteadOf     git://github.com/ghc/packages/
+git config --global url."http://github.com/ghc/packages-".insteadOf    http://github.com/ghc/packages/
+git config --global url."https://github.com/ghc/packages-".insteadOf   https://github.com/ghc/packages/
+git config --global url."ssh://git@github.com/ghc/packages-".insteadOf ssh://git@github.com/ghc/packages/
+git config --global url."git@github.com:/ghc/packages-".insteadOf      git@github.com:/ghc/packages/
+
+# get ghc source
+git clone --recursive https://github.com/ghc/ghc.git -b ghc-8.0.1-release
+pushd ghc
+
+# setup build.mk and config.mk.in
+cp mk/build.mk{.sample,}
+patch -p1 -i $MY_SCRIPT_DIR/patches/ghc.patch
+
+# boot and configure
+./boot
+./configure --prefix=$NDK_TOOLCHAIN --target=arm-linux-androideabi --with-gcc=$NDK_TOOLCHAIN/bin/arm-linux-androideabi-gcc
+make -j4
+
 popd

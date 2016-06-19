@@ -1,0 +1,60 @@
+--- a/libraries/base/GHC/Event/EPoll.hsc
++++ b/libraries/base/GHC/Event/EPoll.hsc
+@@ -167,7 +167,7 @@ newtype EventType = EventType {
+  , epollOut = EPOLLOUT
+  , epollErr = EPOLLERR
+  , epollHup = EPOLLHUP
+- , epollOneShot = EPOLLONESHOT
++ , epollOneShot = 0x40000000
+  }
+--- a/libraries/unix/System/Posix/Terminal/Common.hsc
++++ b/libraries/unix/System/Posix/Terminal/Common.hsc
+@@ -266,7 +266,7 @@ controlChar termios cc = unsafePerformIO $ do
+   withTerminalAttributes termios $ \p -> do
+     let c_cc = (#ptr struct termios, c_cc) p
+     val <- peekElemOff c_cc (cc2Word cc)
+-    if val == ((#const _POSIX_VDISABLE)::CCc)
++    if val == ((#const '\0')::CCc)
+        then return Nothing
+        else return (Just (chr (fromEnum val)))
+ 
+@@ -284,7 +284,7 @@ withoutCC :: TerminalAttributes
+ withoutCC termios cc = unsafePerformIO $ do
+   withNewTermios termios $ \p -> do
+     let c_cc = (#ptr struct termios, c_cc) p
+-    pokeElemOff c_cc (cc2Word cc) ((#const _POSIX_VDISABLE) :: CCc)
++    pokeElemOff c_cc (cc2Word cc) ((#const '\0') :: CCc)
+ 
+ inputTime :: TerminalAttributes -> Int
+ inputTime termios = unsafePerformIO $ do
+--- a/mk/config.mk.in
++++ b/mk/config.mk.in
+@@ -248,7 +248,7 @@ ExtraMakefileSanityChecks = NO
+ # Options for Libraries
+ 
+ # Which directory (in libraries/) contains the integer library?
+-INTEGER_LIBRARY=integer-gmp
++INTEGER_LIBRARY=integer-simple
+ 
+ # We build the libraries at least the "vanilla" way (way "v")
+ # Technically we don't need the v way if DYNAMIC_GHC_PROGRAMS is YES,
+@@ -555,7 +555,7 @@ CrossCompiling        = @CrossCompiling@
+ # want to build stage 2.
+ # See Note [CrossCompiling vs Stage1Only]
+ # See Note [Stage1Only vs stage=1]
+-Stage1Only = NO
++Stage1Only = YES
+ 
+ # Install stage 2 by default, or stage 1 in the cross compiler
+ # case. Can be changed to 3
+--- a/mk/build.mk
++++ b/mk/build.mk
+@@ -14,7 +14,7 @@
+ #BuildFlavour = perf-llvm
+ 
+ # Perf build configured for a cross-compiler
+-#BuildFlavour = perf-cross
++BuildFlavour = perf-cross
+ 
+ # Fast build with optimised libraries, no profiling (RECOMMENDED):
+ #BuildFlavour = quick
