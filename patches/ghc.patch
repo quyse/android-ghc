@@ -8,6 +8,7 @@
  compiler_stage2_CONFIGURE_OPTS += --flags=ghci
  
  ifeq "$(GhcEnableTablesNextToCode) $(GhcUnregisterised)" "YES NO"
+
 --- a/libraries/base/GHC/Event/EPoll.hsc
 +++ b/libraries/base/GHC/Event/EPoll.hsc
 @@ -167,7 +167,7 @@ newtype EventType = EventType {
@@ -17,6 +18,9 @@
 - , epollOneShot = EPOLLONESHOT
 + , epollOneShot = 0x40000000
   }
+ 
+ -- | Create a new epoll context, returning a file descriptor associated with the context.
+
 --- a/libraries/unix/System/Posix/Terminal/Common.hsc
 +++ b/libraries/unix/System/Posix/Terminal/Common.hsc
 @@ -266,7 +266,7 @@ controlChar termios cc = unsafePerformIO $ do
@@ -37,6 +41,7 @@
  
  inputTime :: TerminalAttributes -> Int
  inputTime termios = unsafePerformIO $ do
+
 --- a/mk/config.mk.in
 +++ b/mk/config.mk.in
 @@ -197,7 +197,7 @@ GhcWithSMP := $(strip $(if $(filter YESNO, $(ArchSupportsSMP)$(GhcUnregisterised
@@ -66,6 +71,7 @@
  
  # Install stage 2 by default, or stage 1 in the cross compiler
  # case. Can be changed to 3
+
 --- a/mk/build.mk
 +++ b/mk/build.mk
 @@ -14,7 +14,7 @@

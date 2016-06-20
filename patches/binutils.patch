@@ -1,9 +1,9 @@
---- a/gold/dwarf_reader.cc        2016-06-19 00:26:14.043385597 +0000
-+++ b/gold/dwarf_reader.cc        2016-06-19 00:27:10.364250227 +0000
-@@ -1961,7 +1961,7 @@
-        }
+--- a/gold/dwarf_reader.cc
++++ b/gold/dwarf_reader.cc
+@@ -1961,7 +1961,7 @@ Sized_dwarf_line_info<size, big_endian>::read_header_tables_v5(
+ 	}
        gold_debug(DEBUG_LOCATION, "File %3d: %s",
-                 static_cast<int>(file_list.size()), path);
+ 		 static_cast<int>(file_list.size()), path);
 -      file_list.push_back(std::make_pair<int, std::string>(dirindex, path));
 +      file_list.push_back(std::pair<int, std::string>(dirindex, path));
      }
