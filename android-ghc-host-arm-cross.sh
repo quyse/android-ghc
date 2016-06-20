@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # script is intended to run on Scaleway Arm32 Arch Linux machine
-
 # builds non-standard NDK cross-toolchain with host=arm-eabi, target=arm-linux-androideabi
 
 # prerequisites (run from root): pacman -S autoconf gcc make git binutils pkg-config automake patch flex bison zip alex happy ghc
+# you may want to set up swap space: ghc compilation is very likely to run out of memory
 
 # run the following with normal user
 
@@ -33,6 +33,11 @@ ln -rs $NDK_TOOLCHAIN{,/usr}
 
 # copy files from android-9
 
+# fake pthread
+ln -rs $NDK_TOOLCHAIN/lib/{libcharset.a,libpthread.a}
+# make some links for files in non-standard location
+ln -rs $NDK_TOOLCHAIN/include/{fcntl.h,sys/}
+
 # clone NDK
 git clone https://android.googlesource.com/platform/ndk
 pushd ndk
@@ -43,7 +48,7 @@ repo init -u https://android.googlesource.com/platform/manifest -b master-ndk
 repo sync toolchain/binutils
 pushd toolchain/binutils/binutils-*
 patch -p1 -i $MY_SCRIPT_DIR/patches/binutils.patch
-./configure --prefix=$NDK_TOOLCHAIN --target=arm-linux-androideabi --with-sysroot=$NDK_TOOLCHAIN --enable-ld --enable-gold --enable-plugins --disable-multilib --disable-werror
+./configure --prefix=$NDK_TOOLCHAIN --target=arm-linux-androideabi --with-sysroot=$NDK_TOOLCHAIN --enable-ld --enable-gold --enable-plugins --disable-multilib --disable-nls --disable-werror
 make -j4
 make install
 popd
@@ -53,15 +58,18 @@ repo sync toolchain/gcc
 pushd toolchain/gcc/gcc-4.9
 # from https://gcc.gnu.org/viewcvs/gcc?view=revision&revision=233720, see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=69959
 # from https://gcc.gnu.org/viewcvs/gcc?view=revision&revision=221326, see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=25672
-find $MY_SCRIPT_DIR/patches/gcc -name '*.patch' -exec patch -p2 -i '{}' \;
+patch -p1 -i $MY_SCRIPT_DIR/patches/gcc.patch
+
 popd
 
 # build gcc out-of-place
 mkdir gcc_place
 pushd gcc_place
-$NDK/toolchain/gcc/gcc-4.9/configure --prefix=$NDK_TOOLCHAIN --target=arm-linux-androideabi --with-sysroot=$NDK_TOOLCHAIN --enable-languages=c,c++ --disable-multilib
+$NDK/toolchain/gcc/gcc-4.9/configure --prefix=$NDK_TOOLCHAIN --target=arm-linux-androideabi --with-sysroot=$NDK_TOOLCHAIN --enable-languages=c,c++ --disable-multilib --without-headers --disable-linux-futex
 make -j4 all-gcc all-target-libgcc
 make install-gcc install-target-libgcc
+make -j4
+make install
 popd
 
 popd # ndk
@@ -83,8 +91,7 @@ make install
 popd
 
 # install ncurses
-curl -LO http://ftp.gnu.org/pub/gnu/ncurses/ncurses-5.9.tar.gz
-tar xf ncurses-5.9.tar.gz
+curl -L http://ftp.gnu.org/pub/gnu/ncurses/ncurses-5.9.tar.gz | tar xz
 pushd ncurses-5.9
 # ac_cv_header_locale_h=no is to work around error
 ac_cv_header_locale_h=no ./configure --prefix=$NDK_TOOLCHAIN --host=arm-linux-androideabi --with-sysroot=$NDK_TOOLCHAIN --enable-static --disable-shared --without-manpages --includedir=$NDK_TOOLCHAIN/include
