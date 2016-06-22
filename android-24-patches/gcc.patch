@@ -1,0 +1,98 @@
+diff --git a/gcc-4.9/gcc/system.h b/gcc-4.9/gcc/system.h
+index 40e3cfa..274b847 100644
+--- a/gcc-4.9/gcc/system.h
++++ b/gcc-4.9/gcc/system.h
+@@ -70,7 +70,7 @@ along with GCC; see the file COPYING3.  If not see
+    extensions and need to be prototyped by hand (since we do not
+    define _GNU_SOURCE).  */
+ 
+-#if defined HAVE_DECL_PUTC_UNLOCKED && HAVE_DECL_PUTC_UNLOCKED
++#if defined HAVE_DECL_PUTC_UNLOCKED && HAVE_DECL_PUTC_UNLOCKED && 0
+ 
+ # ifdef HAVE_PUTC_UNLOCKED
+ #  undef putc
+diff --git a/gcc-4.9/intl/localealias.c b/gcc-4.9/intl/localealias.c
+index 5af5b5b..90f8cf9 100644
+--- a/gcc-4.9/intl/localealias.c
++++ b/gcc-4.9/intl/localealias.c
+@@ -30,7 +30,7 @@
+ #include <ctype.h>
+ #include <stdio.h>
+ #if defined _LIBC || defined HAVE___FSETLOCKING
+-# include <stdio_ext.h>
++//# include <stdio_ext.h>
+ #endif
+ #include <sys/types.h>
+ 
+@@ -240,7 +240,7 @@ read_alias_file (fname, fname_len)
+ 
+ #ifdef HAVE___FSETLOCKING
+   /* No threads present.  */
+-  __fsetlocking (fp, FSETLOCKING_BYCALLER);
++//  __fsetlocking (fp, FSETLOCKING_BYCALLER);
+ #endif
+ 
+   added = 0;
+diff --git a/gcc-4.9/libcpp/files.c b/gcc-4.9/libcpp/files.c
+index 149f06d..690fb1d 100644
+--- a/gcc-4.9/libcpp/files.c
++++ b/gcc-4.9/libcpp/files.c
+@@ -715,12 +715,14 @@ read_file_guts (cpp_reader *pfile, _cpp_file *file)
+   if (regular && total != size && STAT_SIZE_RELIABLE (file->st))
+     cpp_error (pfile, CPP_DL_WARNING,
+ 	       "%s is shorter than expected", file->path);
++	off_t ot = file->st.st_size;
+ 
+   file->buffer = _cpp_convert_input (pfile,
+ 				     CPP_OPTION (pfile, input_charset),
+ 				     buf, size + 16, total,
+ 				     &file->buffer_start,
+-				     &file->st.st_size);
++				     &ot);
++	file->st.st_size = ot;
+   file->buffer_valid = true;
+ 
+   return true;
+diff --git a/gcc-4.9/libcpp/macro.c b/gcc-4.9/libcpp/macro.c
+index 11e50f4..48c743d 100644
+--- a/gcc-4.9/libcpp/macro.c
++++ b/gcc-4.9/libcpp/macro.c
+@@ -249,8 +249,10 @@ _cpp_builtin_macro_text (cpp_reader *pfile, cpp_hashnode *node)
+ 		   looks like "Sun Sep 16 01:03:52 1973".  */
+ 		struct tm *tb = NULL;
+ 		struct stat *st = _cpp_get_file_stat (file);
+-		if (st)
+-		  tb = localtime (&st->st_mtime);
++		if (st) {
++			time_t t = (time_t) st->st_mtime;
++		  tb = localtime (&t);
++		}
+ 		if (tb)
+ 		  {
+ 		    char *str = asctime (tb);
+diff --git a/gcc-4.9/libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.cc b/gcc-4.9/libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.cc
+index 196eb3b..efeb526 100644
+--- a/gcc-4.9/libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.cc
++++ b/gcc-4.9/libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.cc
+@@ -163,7 +163,7 @@ namespace __sanitizer {
+   unsigned struct_old_utsname_sz = sizeof(struct old_utsname);
+   unsigned struct_oldold_utsname_sz = sizeof(struct oldold_utsname);
+   unsigned struct_itimerspec_sz = sizeof(struct itimerspec);
+-  unsigned struct_ustat_sz = sizeof(struct ustat);
++  //unsigned struct_ustat_sz = sizeof(struct ustat);
+ #endif // SANITIZER_LINUX
+ 
+ #if SANITIZER_LINUX && !SANITIZER_ANDROID
+diff --git a/gcc-4.9/libsanitizer/sanitizer_common/sanitizer_symbolizer_posix_libcdep.cc b/gcc-4.9/libsanitizer/sanitizer_common/sanitizer_symbolizer_posix_libcdep.cc
+index 7aead97..2fcd230 100644
+--- a/gcc-4.9/libsanitizer/sanitizer_common/sanitizer_symbolizer_posix_libcdep.cc
++++ b/gcc-4.9/libsanitizer/sanitizer_common/sanitizer_symbolizer_posix_libcdep.cc
+@@ -128,7 +128,7 @@ static bool StartSymbolizerSubprocess(const char *path_to_symbolizer,
+     internal_close(outfd[1]);
+     internal_close(infd[0]);
+     internal_close(infd[1]);
+-    for (int fd = getdtablesize(); fd > 2; fd--)
++    for (int fd = sysconf(_SC_OPEN_MAX); fd > 2; fd--)
+       internal_close(fd);
+     execl(path_to_symbolizer, path_to_symbolizer, kSymbolizerArch, (char*)0);
+     internal__exit(1);
